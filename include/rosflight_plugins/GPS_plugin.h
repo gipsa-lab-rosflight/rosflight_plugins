@@ -29,7 +29,7 @@
 #include <gazebo/gazebo.hh>
 #include <gazebo/physics/physics.hh>
 
-#include <rosflight_msgs/GPS.h>
+#include <sensor_msgs/NavSatFix.h>
 
 namespace rosflight_plugins 
 {
@@ -67,7 +67,7 @@ namespace rosflight_plugins
     std::string GPS_topic_;
 
     // Message with static info prefilled
-    rosflight_msgs::GPS GPS_message_;
+    sensor_msgs::NavSatFix GPS_message_;
 
     // params
     double pub_rate_;

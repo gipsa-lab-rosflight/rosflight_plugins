@@ -97,7 +97,7 @@ void GPSPlugin::Load(gazebo::physics::ModelPtr _model, sdf::ElementPtr _sdf)
   numSat = nh_private_.param<int>("num_sats", 7);
 
   // ROS Publishers
-  GPS_pub_ = nh_.advertise<rosflight_msgs::GPS>(GPS_topic_, 1);
+  GPS_pub_ = nh_.advertise<sensor_msgs::NavSatFix>(GPS_topic_, 1);
 
   // Calculate sample time from sensor update rate
   sample_time_ = 1.0/pub_rate_;
@@ -115,13 +115,18 @@ void GPSPlugin::Load(gazebo::physics::ModelPtr _model, sdf::ElementPtr _sdf)
     north_k_GPS_ = 0;
     east_k_GPS_ = 0;
     alt_k_GPS_ = 0;
+		
   }
 
   // Fill static members of GPS message.
   GPS_message_.header.frame_id = link_name_;
-  GPS_message_.fix = true;
-  GPS_message_.NumSat = numSat;
-
+  GPS_message_.status.status = sensor_msgs::NavSatStatus::STATUS_FIX;
+  GPS_message_.status.service = sensor_msgs::NavSatStatus::SERVICE_GPS;
+  //GPS_message_.NumSat = numSat;
+	GPS_message_.position_covariance_type=sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
+	for(int i=0; i<9; i++)
+		GPS_message_.position_covariance[i]=0;
+	
   // initialize GPS error to zero
   north_GPS_error_ = 0.0;
   east_GPS_error_ = 0.0;
@@ -153,7 +158,12 @@ void GPSPlugin::OnUpdate(const gazebo::common::UpdateInfo& _info)
       double pn =  GET_X(GET_POS(W_pose_W_C)) + north_GPS_error_;
       double pe = -GET_Y(GET_POS(W_pose_W_C)) + east_GPS_error_;
       double h  =  GET_Z(GET_POS(W_pose_W_C)) + alt_GPS_error_;
-
+			
+			GPS_message_.position_covariance[0]=north_stdev_*north_stdev_;
+			GPS_message_.position_covariance[4]=east_stdev_*east_stdev_;
+			GPS_message_.position_covariance[9]=alt_stdev_*alt_stdev_;
+			
+			
       // Convert meters to GPS angle
       double dlat, dlon;
       measure(pn, pe, dlat, dlon);
@@ -164,7 +174,8 @@ void GPSPlugin::OnUpdate(const gazebo::common::UpdateInfo& _info)
       GPS_message_.altitude = initial_altitude_ + h;
 
       // Get Ground Speed
-      GazeboVector C_linear_velocity_W_C = GET_RELATIVE_LINEAR_VEL(link_);
+			/*
+			GazeboVector C_linear_velocity_W_C = GET_RELATIVE_LINEAR_VEL(link_);
       double u = GET_X(C_linear_velocity_W_C);
       double v = -GET_Y(C_linear_velocity_W_C);
       double Vg = sqrt(u*u + v*v);
@@ -180,7 +191,8 @@ void GPSPlugin::OnUpdate(const gazebo::common::UpdateInfo& _info)
       double sigma_chi = sqrt((dx*dx*north_stdev_*north_stdev_ + dy*dy*east_stdev_*east_stdev_)/((dx*dx+dy*dy)*(dx*dx+dy*dy)));
       double chi_error = sigma_chi*standard_normal_distribution_(random_generator_);
       GPS_message_.ground_course = chi + chi_error;
-
+			*/
+			
       // Publish
       GPS_message_.header.stamp.fromSec(GET_SIM_TIME(world_).Double());
       GPS_pub_.publish(GPS_message_);
